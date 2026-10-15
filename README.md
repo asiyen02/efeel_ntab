@@ -1,6 +1,8 @@
-# UltraTac firmware
+# Efeel firmware
 
 STM32 firmware to pulse an ultrasonic transducer and capture the echo envelope over USB. `host.py` saves and plots the samples.
+
+Code utilizes the boilerplate from the UltraTac paper constructed by a group from Tsinghua university. UltraTac had a lot of unwritten methods and bugs in firmware that we aimed to fix in this implementation
 
 The current target is a provisional STM32F446RC with a 25 MHz crystal. The code builds and passes software tests, but hasn't been tested on the board yet. Raw waveform capture isn't supported yet.
 
