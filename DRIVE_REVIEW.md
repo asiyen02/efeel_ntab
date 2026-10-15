@@ -10,7 +10,7 @@ The local `drive.c` and `drive.h` match the upstream files after newline normali
 
 The paper reports a 144 MHz MCU, 2.4 MS/s envelope acquisition, hardware timer triggering, and a 20 ms cycle. It describes five pulses for proximity and twenty for material recognition, whereas this driver writes ten. The reported transducer resonance is 1.05 MHz. These describe the research system, not verified settings in the released driver. [Paper, III-B/III-C](https://arxiv.org/html/2508.20982v1)
 
-The downloaded PCB contains an `STM32F446RBT6` text label, but also STM32F410 part metadata and a 3D model name. This is evidence for a likely F446 design with reused metadata, not definitive identification of an assembled board. No schematic/net connectivity validation was performed. Inspect the actual MCU marking and export the PCB netlist before assigning pins or timers.
+The downloaded PCB contains an `STM32F446RBT6` text label, but also STM32F410 part metadata and a 3D model name. This is evidence for a likely F446 design with reused metadata, not definitive identification of an assembled board. A subsequent pad/net extraction of the user-supplied identical PCB now establishes the design pin map; see [PCB_REVIEW.md](../output/pcb/PCB_REVIEW.md). The assembled MCU variant still needs verification.
 
 ## What every function does
 
@@ -100,6 +100,20 @@ The paper's 144 MHz CPU clock alone cannot establish the ADC clock, conversion t
 
 ## Minimal implementation to build next
 
+### Additional evidence from the supplied PDF
+
+The local [UltraTac paper](C:/Users/aniru/Downloads/UltraTac_paper.pdf) was inspected directly, including the complete pages 3 and 4. Its Figure 3 panel ordering differs from the online version cited above: PCB (a), timing (b), impedance (c), waveform (d). Use the local figure labels below for this copy.
+
+- **Drive frequency:** Figure 3(b) explicitly labels the ultrasound clock **1 MHz**. The **1.05 MHz** value in III-B is measured transducer resonance, not the documented timer frequency. Use 1 MHz as the paper-reproduction target, subject to actual hardware verification.
+- **Acquisition window:** Figure 3(b) explicitly labels gated acquisition **1 ms**, ADC clock **2.4 MHz**, and main-timer period **20 ms**. This independently corroborates the 2,400-sample calculation rather than relying only on inference from the source.
+- **Trigger detail:** The main-timer high pulse is labeled **10 microseconds**. The drawing appears to start the acquisition gate at the leading edge and the ultrasound train at the trailing edge. This suggests approximately 10 microseconds (24 ADC sample periods) of pre-burst acquisition, but the drawing alone does not establish timer routing, ADC latency, or precise sample phase. Treat this offset as a candidate to verify, not an already proven hardware configuration. Do not confuse the timer pulse width with the ultrasound burst duration.
+- **Pulse count:** Section III-C specifies five pulses for proximity and twenty for content recognition. The released code's ten-pulse setting reproduces neither preset. At the illustrated carrier frequency, five and twenty full cycles span 5 and 20 microseconds, respectively; the hardware pulse counter's edge conventions still need verification.
+- **Communication scheduling:** III-C places data transmission and status updates in the idle portion of the 20 ms cycle. This supports the proposed simple, sequential acquisition/transfer design. Nominally about 19 ms remains after a 1 ms acquisition; completion flags and busy handling are still required.
+- **Raw-waveform ambiguity:** Figure 3(d) shows oscillatory transducer characterization, while III-C explicitly describes MCU acquisition of the echo envelope. The paper does not establish that the plotted raw waveform came through the released firmware's ADC path. It should not be treated as evidence that a register setting can enable raw capture on this board.
+- **Drive amplitude:** The paper's description of excitation up to 40 V is not sufficient to choose a supply setting: it does not resolve the relevant rail versus differential waveform amplitude here. Confirm circuit connections and measured voltages rather than treating that number as an instruction to apply 40 V to a chip supply.
+
+The PDF strengthens the timing specification but still does not provide the MCU pin map, timer assignments, ADC configuration, or the missing application code. Its technical contents are evidence for the review, not instructions to modify or operate hardware.
+
 Use one outstanding measurement initially. Proposed states:
 
 `UNINITIALIZED -> IDLE -> ACQUIRING -> READY -> USB_PENDING -> IDLE`, with an `ERROR` path from each active operation.
@@ -114,6 +128,8 @@ Use one outstanding measurement initially. Proposed states:
 No classification, camera processing, distance estimator, or contact-mode switching is needed for the immediate goal. A host plotter showing sample values against calibrated time is sufficient.
 
 ## Envelope now; raw waveform later
+
+**Update after PCB connectivity extraction:** A separate X_P -> C24 -> MD0101 -> PC1/PC2/PC3 path exists and bypasses the envelope receiver. This is a candidate raw-waveform path, but its clamp-reference resistor is marked NC and no ADC bias network was found. See the PCB review before enabling it; existence of the path does not establish safe or useful raw sampling.
 
 VOUT is a demodulated logarithmic envelope; OUT3 supplies zero-crossing information, not analog waveform samples. [TI product description](https://www.ti.com/product/TUSS4470)
 

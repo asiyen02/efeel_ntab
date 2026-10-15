@@ -1,0 +1,6 @@
+.build/
+__pycache__/
+*.efw
+*.csv
+FIRMWARE_PLAN.md
+DRIVE_REVIEW.md
